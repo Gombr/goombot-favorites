@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Favorites Editor</title>
+<style>
+  :root{
+    --bg: #14161b;
+    --panel: #1b1e25;
+    --panel-2: #21242c;
+    --border: #2b2f3a;
+    --text: #edeef2;
+    --muted: #8b8fa3;
+    --accent: #e8b34c;
+    --accent-ink: #2a1d05;
+    --focus: #e8b34c;
+
+    --c-common:  #c9cdd6;
+    --c-uncommon:#3ddc71;
+    --c-rare:    #5b8dff;
+    --c-ultra:   #b56bff;
+    --c-legend:  #ffa943;
+
+    --radius: 10px;
+    --radius-lg: 16px;
+  }
+
+  *{ box-sizing: border-box; }
+  html{ color-scheme: dark; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", system-ui, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a{ color: inherit; }
+
+  ::selection{ background: var(--accent); color: var(--accent-ink); }
+
+  /* ---------- Banner ---------- */
+  .banner{
+    background: #3a2a12;
+    border-bottom: 1px solid #6b4a1a;
+    color: #ffd28a;
+    font-size: 13.5px;
+    padding: 10px 20px;
+    text-align: center;
+  }
+  .banner button{
+    background:none; border:none; color:#ffd28a; text-decoration: underline;
+    cursor:pointer; font-size: 13.5px; margin-left: 8px;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    position: sticky; top:0; z-index: 20;
+    background: rgba(20,22,27,.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner{
+    max-width: 1180px; margin: 0 auto;
+    display:flex; align-items:center; gap: 18px;
+    padding: 14px 20px;
+    flex-wrap: wrap;
+  }
+  .brand{ display:flex; align-items:center; gap:8px; }
+  .brand-mark{
+    display:inline-flex; align-items:center; justify-content:center;
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(155deg, var(--accent), #b9832a);
+    color: #241905; font-weight: 900; font-size: 15px;
+  }
+  .brand h1{
+    font-size: 19px; font-weight: 800; letter-spacing: -0.02em;
+    margin:0; white-space:nowrap;
+  }
+  .brand-accent{ color: var(--accent); }
+
+  .stats{
+    font-variant-numeric: tabular-nums;
+    font-size: 13.5px; color: var(--muted);
+    white-space: nowrap;
+    padding: 6px 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+  }
+  .stats b{ color: var(--text); font-weight: 700; }
+
+  .search-wrap{ flex: 1 1 220px; min-width: 160px; }
+  #searchInput{
+    width:100%; padding: 9px 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+  }
+  #searchInput:focus{ border-color: var(--focus); box-shadow: 0 0 0 3px rgba(232,179,76,.15); }
+  #searchInput::placeholder{ color: var(--muted); }
+
+  .actions{ display:flex; gap:8px; flex-wrap: wrap; }
+  .btn{
+    border-radius: 999px; border: 1px solid var(--border);
+    padding: 9px 16px; font-size: 13.5px; font-weight: 600;
+    cursor:pointer; white-space:nowrap;
+    transition: transform .08s ease, filter .12s ease;
+  }
+  .btn:active{ transform: scale(0.97); }
+  .btn-primary{ background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn-primary:hover{ filter: brightness(1.08); }
+  .btn-ghost{ background: var(--panel); color: var(--text); }
+  .btn-ghost:hover{ background: var(--panel-2); }
+  .btn-mini{
+    background:none; border:none; color: var(--muted);
+    font-size: 12px; cursor:pointer; text-decoration: underline;
+    padding: 0;
+  }
+  .btn-mini:hover{ color: var(--text); }
+
+  /* ---------- Load panel ---------- */
+  .load-panel{
+    max-width: 1180px; margin: 0 auto;
+    padding: 0 20px 16px;
+    display:flex; gap: 10px; align-items:flex-start; flex-wrap: wrap;
+  }
+  #loadInput{
+    flex: 1 1 320px;
+    min-height: 42px;
+    resize: vertical;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 12.5px;
+    padding: 10px 12px;
+  }
+  .load-status{ font-size: 12.5px; color: var(--muted); align-self:center; }
+  .load-status.ok{ color: var(--c-uncommon); }
+  .load-status.err{ color: #ff6b6b; }
+
+  /* ---------- Layout ---------- */
+  .layout{
+    max-width: 1180px; margin: 0 auto;
+    display:flex; gap: 26px;
+    padding: 22px 20px 60px;
+    align-items: flex-start;
+  }
+
+  .railnav{
+    position: sticky; top: 84px;
+    display:flex; flex-direction:column; gap:6px;
+    width: 190px; flex-shrink:0;
+  }
+  .rail-tab{
+    display:flex; flex-direction:column; gap:6px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--panel);
+    cursor:pointer;
+    text-align:left;
+  }
+  .rail-tab:hover{ background: var(--panel-2); }
+  .rail-tab .rail-top{ display:flex; justify-content:space-between; align-items:center; font-size: 13px; font-weight:700; }
+  .rail-tab .rail-count{ font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .rail-fill-track{ height:4px; border-radius:2px; background:#0d0f13; overflow:hidden; }
+  .rail-fill{ height:100%; border-radius:2px; }
+
+  .content{ flex:1; min-width:0; display:flex; flex-direction:column; gap: 28px; }
+
+  .section{ scroll-margin-top: 90px; }
+  .section-head{
+    display:flex; align-items:baseline; gap:10px;
+    padding-left: 14px;
+    border-left: 4px solid var(--rarity-color, var(--accent));
+    margin-bottom: 12px;
+  }
+  .section-head h2{ font-size: 16.5px; margin:0; letter-spacing: -0.01em; }
+  .section-head .section-count{ font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .section-head .section-tools{ margin-left:auto; display:flex; gap:10px; }
+
+  .card-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+  }
+  .card-row{
+    display:flex; align-items:center; gap:10px;
+    padding: 9px 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor:pointer;
+    user-select:none;
+  }
+  .card-row:hover{ background: var(--panel-2); border-color: #3a3f4d; }
+  .card-row.checked{ border-color: var(--rarity-color, var(--accent)); background: #23262f; }
+  .card-row input{ accent-color: var(--rarity-color, var(--accent)); width:16px; height:16px; flex-shrink:0; pointer-events:none; }
+  .card-row span{ font-size: 13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .card-row.hidden{ display:none; }
+  .section.hidden{ display:none; }
+
+  /* ---------- Footer ---------- */
+  .foot{
+    max-width: 1180px; margin: 0 auto;
+    padding: 0 20px 50px;
+    color: var(--muted); font-size: 13px; line-height:1.6;
+  }
+  .foot code{
+    background: var(--panel); border:1px solid var(--border);
+    padding: 1px 6px; border-radius:5px; font-size: 12.5px;
+  }
+
+  /* ---------- Toast ---------- */
+  #toast{
+    position: fixed; bottom: 22px; left:50%; transform: translateX(-50%) translateY(20px);
+    background: var(--accent); color: var(--accent-ink);
+    padding: 10px 18px; border-radius: 999px; font-weight:700; font-size: 13.5px;
+    opacity:0; pointer-events:none; transition: opacity .18s ease, transform .18s ease;
+    z-index: 50;
+  }
+  #toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 760px){
+    .layout{ flex-direction:column; padding-top: 10px; }
+    .railnav{
+      position: sticky; top: 0px; z-index: 15;
+      flex-direction:row; width:100%; overflow-x:auto;
+      background: var(--bg); padding: 10px 0; margin-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rail-tab{ flex-shrink:0; min-width: 130px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">◈</span>
+        <h1>Favorites<span class="brand-accent">.</span></h1>
+      </div>
+      <div class="stats"><b id="favCount">0</b> / <span id="totalCount">0</span> favorited</div>
+      <div class="search-wrap">
+        <input id="searchInput" type="text" placeholder="Search cards…" autocomplete="off">
+      </div>
+      <div class="actions">
+        <button id="exportBtn" class="btn btn-primary">Copy Export Code</button>
+        <button id="loadToggleBtn" class="btn btn-ghost">Load Code</button>
+      </div>
+    </div>
+    <div id="loadPanel" class="load-panel" hidden>
+      <textarea id="loadInput" placeholder="Paste your code from Discord here…" rows="1"></textarea>
+      <button id="loadApplyBtn" class="btn btn-primary">Load</button>
+      <span id="loadStatus" class="load-status"></span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="railnav" id="railnav"></nav>
+    <main class="content" id="content"></main>
+  </div>
+
+  <footer class="foot">
+    <p>Check the cards you want favorited, then tap <strong>Copy Export Code</strong> and run <code>/favorite import</code> in Discord with the copied code. Favoriting here doesn't require owning the card.</p>
+  </footer>
+
+  <div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------------------------------------------------------------
+  // Card data. This must be the same cards.js the bot uses (name + rarity
+  // only). Keep this array's order and content in sync with the bot's
+  // cards.js whenever the card roster changes, or exported/imported codes
+  // will fail the checksum check below (by design — better to fail loudly
+  // than silently mismap favorites to the wrong cards).
+  // ---------------------------------------------------------------------
+  const CARD_DATA = [{"n":"Mario","r":"Common"},{"n":"Yoshi","r":"Common"},{"n":"Magikoopa","r":"Uncommon"},{"n":"Dry Bones","r":"Uncommon"},{"n":"Koopa","r":"Common"},{"n":"Luigi","r":"Common"},{"n":"Peach","r":"Common"},{"n":"Shadow Mario","r":"Rare"},{"n":"Bowser","r":"Uncommon"},{"n":"Daisy","r":"Common"},{"n":"Shy Guy","r":"Common"},{"n":"Snifit","r":"Rare"},{"n":"Metal Yoshi","r":"Legendary"},{"n":"Petey Piranha","r":"Rare"},{"n":"Pink Menace","r":"Uncommon"},{"n":"Red Noki","r":"Uncommon"},{"n":"Green Noki","r":"Uncommon"},{"n":"Blue Noki","r":"Uncommon"},{"n":"Blue Blob","r":"Uncommon"},{"n":"Yellow Fellow","r":"Uncommon"},{"n":"Boo","r":"Uncommon"},{"n":"Blooper","r":"Common"},{"n":"Cheep Cheep","r":"Common"},{"n":"Spy Fox","r":"Legendary"},{"n":"Boo Enthusiast","r":"Legendary"},{"n":"Mel Shark","r":"Legendary"},{"n":"Goombna","r":"Legendary"},{"n":"Goomba","r":"Common"},{"n":"Saul GoodPin","r":"Ultra Rare"},{"n":"Rio Mushroom","r":"Ultra Rare"},{"n":"Birdo","r":"Uncommon"},{"n":"Monty Mole","r":"Common"},{"n":"Paratroopa","r":"Common"},{"n":"Neil","r":"Ultra Rare"},{"n":"Ella","r":"Ultra Rare"},{"n":"Putts","r":"Ultra Rare"},{"n":"Lakitu Valley","r":"Uncommon"},{"n":"Cheep Cheep Falls","r":"Uncommon"},{"n":"Shifting Sands","r":"Uncommon"},{"n":"Blooper Bay","r":"Uncommon"},{"n":"Peach's Castle Grounds","r":"Uncommon"},{"n":"Bowser Badlands","r":"Uncommon"},{"n":"Congo Canopy","r":"Uncommon"},{"n":"Chain Chomp","r":"Rare"},{"n":"Bob-Omb","r":"Uncommon"},{"n":"Bowser Jr.","r":"Uncommon"},{"n":"Floofy Flareon","r":"Legendary"},{"n":"Toasty Tour 100","r":"Legendary"},{"n":"KamiGoat","r":"Legendary"},{"n":"This Game Is !@#","r":"Legendary"},{"n":"Whomp","r":"Uncommon"},{"n":"Thwomp","r":"Uncommon"},{"n":"Wario","r":"Common"},{"n":"Waluigi","r":"Common"},{"n":"Toad","r":"Common"},{"n":"Toadsworth","r":"Uncommon"},{"n":"Big Bertha","r":"Rare"},{"n":"Piranha Plant","r":"Common"},{"n":"Paragoomba","r":"Common"},{"n":"Dixie Kong","r":"Uncommon"},{"n":"Toadette","r":"Uncommon"},{"n":"Professor E. Gadd","r":"Ultra Rare"},{"n":"Cataquack","r":"Uncommon"},{"n":"French Cat","r":"Ultra Rare"},{"n":"No Wind","r":"Uncommon"},{"n":"Pistol","r":"Ultra Rare"},{"n":"Pete","r":"Ultra Rare"},{"n":"Luna","r":"Ultra Rare"},{"n":"Sylvia","r":"Ultra Rare"},{"n":"Bobbie","r":"Ultra Rare"},{"n":"Loochie","r":"Ultra Rare"},{"n":"Pemdy","r":"Ultra Rare"},{"n":"Sophie","r":"Ultra Rare"},{"n":"Lakitu","r":"Uncommon"},{"n":"Donkey Kong","r":"Common"},{"n":"Diddy Kong","r":"Uncommon"},{"n":"Boomerang Bro","r":"Rare"},{"n":"Hammer Bro","r":"Rare"},{"n":"Fire Bro","r":"Rare"},{"n":"King Boo","r":"Rare"},{"n":"Klepto","r":"Rare"},{"n":"Tweester","r":"Rare"},{"n":"Phanto","r":"Rare"},{"n":"Pokey","r":"Common"},{"n":"Mad Piano","r":"Ultra Rare"},{"n":"Hydra Part 1","r":"Ultra Rare"},{"n":"Hydra Part 2","r":"Ultra Rare"},{"n":"Hydra Part 3","r":"Ultra Rare"},{"n":"Dragoon Part 1","r":"Ultra Rare"},{"n":"Dragoon Part 2","r":"Ultra Rare"},{"n":"Dragoon Part 3","r":"Ultra Rare"},{"n":"Slice 20XX","r":"Rare"},{"n":"Toasty","r":"Legendary"},{"n":"Albert Ross","r":"Rare"},{"n":"New Netplayer","r":"Common"},{"n":"Headphones","r":"Common"},{"n":"Ethernet Cable","r":"Common"},{"n":"Boshi","r":"Rare"},{"n":"True...","r":"Rare"},{"n":"Coin","r":"Common"},{"n":"Homerun","r":"Common"},{"n":"mel's garage","r":"Legendary"},{"n":"Dole Banana","r":"Uncommon"},{"n":"AiAi","r":"Common"},{"n":"Vivian","r":"Ultra Rare"},{"n":"Goth Daisy","r":"Ultra Rare"},{"n":"Goombot","r":"Legendary"},{"n":"Crater","r":"Common"},{"n":"Shadow Queen","r":"Legendary"},{"n":"King Bob-Omb","r":"Rare"},{"n":"Wiggler","r":"Common"},{"n":"FLUDD","r":"Ultra Rare"},{"n":"Spiny","r":"Common"},{"n":"Pauline","r":"Uncommon"},{"n":"Fire Flower","r":"Common"},{"n":"Banana Peel","r":"Common"},{"n":"Power Star","r":"Rare"},{"n":"Kirby","r":"Uncommon"},{"n":"Waddle Dee","r":"Common"},{"n":"Fox Shine","r":"Rare"},{"n":"Meta Knight","r":"Rare"},{"n":"King DeDeDe","r":"Rare"},{"n":"ROB","r":"Rare"},{"n":"Hidden Block","r":"Rare"},{"n":"Captain Falcon","r":"Ultra Rare"},{"n":"Sand Bird","r":"Ultra Rare"},{"n":"Ninji","r":"Common"},{"n":"Bullet Bill Blaster","r":"Common"},{"n":"Pidgit","r":"Uncommon"},{"n":"Green Bird","r":"Uncommon"},{"n":"Red Bird","r":"Common"},{"n":"Blue Bird","r":"Rare"},{"n":"Mario Power Tennis for the Nintendo GameCube","r":"Legendary"},{"n":"Happy Gilmore","r":"Legendary"},{"n":"Tabuu","r":"Legendary"},{"n":"1 Wood","r":"Uncommon"},{"n":"3 Iron","r":"Uncommon"},{"n":"Sand Wedge","r":"Uncommon"},{"n":"Mecha Bowser","r":"Rare"},{"n":"Angry Sun","r":"Rare"},{"n":"Rosalina","r":"Uncommon"},{"n":"Midna","r":"Ultra Rare"},{"n":"Dorrie","r":"Ultra Rare"},{"n":"Kung Fu Koopa","r":"Uncommon"},{"n":"Skeeter","r":"Rare"},{"n":"Freezie","r":"Rare"},{"n":"Negative Blueprint","r":"Legendary"},{"n":"Patrick Piranha","r":"Legendary"},{"n":"Benny's Broken Club","r":"Legendary"},{"n":"Blue Space","r":"Common"},{"n":"Fly Guy","r":"Uncommon"},{"n":"Proto Piranha","r":"Uncommon"},{"n":"Mr. Blizzard","r":"Common"},{"n":"Sandbag","r":"Common"},{"n":"Bases Loaded","r":"Uncommon"},{"n":"Buzzy Beetle","r":"Common"},{"n":"ISO File","r":"Uncommon"},{"n":"Scuttlebug","r":"Uncommon"},{"n":"Bosco","r":"Ultra Rare"},{"n":"Astolfo","r":"Legendary"},{"n":"Ukiki","r":"Uncommon"},{"n":"Fake Item Box","r":"Common"},{"n":"MIPS","r":"Rare"},{"n":"AYY LMAO","r":"Ultra Rare"},{"n":"Delivery Guy who found your house","r":"Rare"},{"n":"Third Try USB Plug","r":"Common"},{"n":"Power Shot","r":"Uncommon"},{"n":"PictoChat","r":"Rare"},{"n":"Final Destination","r":"Rare"},{"n":"Comet Observatory","r":"Rare"},{"n":"Dart Monkey","r":"Common"},{"n":"Glitzville","r":"Uncommon"},{"n":"Edging","r":"Common"},{"n":"Open the Case","r":"Legendary"},{"n":"Amazy Dayzee","r":"Ultra Rare"},{"n":"Hubert","r":"Common"},{"n":"X-Naut","r":"Common"},{"n":"Creeper","r":"Common"},{"n":"Para Beetle","r":"Common"},{"n":"Spike","r":"Common"},{"n":"Klaptrap","r":"Common"},{"n":"Assist Trophy","r":"Common"},{"n":"Bullet Bill","r":"Common"},{"n":"Bully","r":"Common"},{"n":"Luma","r":"Common"},{"n":"Capsule Machine","r":"Common"},{"n":"Bandit","r":"Common"},{"n":"Sparky Sticker","r":"Common"},{"n":"Penguin","r":"Common"},{"n":"Blargg","r":"Common"},{"n":"Fuzzy","r":"Common"},{"n":"Goonie","r":"Common"},{"n":"Gooble","r":"Common"},{"n":"Sidestepper","r":"Common"},{"n":"Chem Note","r":"Common"},{"n":"GonGon","r":"Common"},{"n":"Sea Bass","r":"Common"},{"n":"Blathers","r":"Common"},{"n":"Wobbly Bobbly","r":"Common"},{"n":"Orange Ghost","r":"Common"},{"n":"Compact Star","r":"Common"},{"n":"Red Pikmin","r":"Common"},{"n":"Blue Pikmin","r":"Common"},{"n":"Yellow Pikmin","r":"Common"},{"n":"Baby","r":"Common"},{"n":"Clyde","r":"Common"},{"n":"Star Bunny","r":"Common"},{"n":"Mechakoopa","r":"Common"},{"n":"Snot Kid","r":"Common"},{"n":"Pipe Shot","r":"Uncommon"},{"n":"Stitch Face","r":"Uncommon"},{"n":"Mr. I","r":"Uncommon"},{"n":"Lahla","r":"Uncommon"},{"n":"O'Chunks","r":"Uncommon"},{"n":"MC Ballyhoo","r":"Uncommon"},{"n":"Bubble Flower","r":"Uncommon"},{"n":"Yoshi Kid","r":"Uncommon"},{"n":"Casino Luigi","r":"Uncommon"},{"n":"Hungry Luma","r":"Uncommon"},{"n":"Coin Coffer","r":"Uncommon"},{"n":"Swoop","r":"Uncommon"},{"n":"Strollin' Stu","r":"Uncommon"},{"n":"Boom Boom","r":"Uncommon"},{"n":"Nabbit","r":"Uncommon"},{"n":"Putter","r":"Uncommon"},{"n":"Early Dive","r":"Uncommon"},{"n":"MeeMee","r":"Uncommon"},{"n":"Magnet Ball","r":"Uncommon"},{"n":"Flappy Bird","r":"Uncommon"},{"n":"Red Snapper","r":"Uncommon"},{"n":"CRT","r":"Uncommon"},{"n":"Heart Container","r":"Uncommon"},{"n":"9-Volt","r":"Uncommon"},{"n":"Orbulon","r":"Uncommon"},{"n":"GC Controller","r":"Uncommon"},{"n":"Pikachu","r":"Uncommon"},{"n":"Swerve Star","r":"Uncommon"},{"n":"Eddy","r":"Uncommon"},{"n":"Double D","r":"Uncommon"},{"n":"Rolf","r":"Uncommon"},{"n":"Bulborb","r":"Uncommon"},{"n":"Doodle Jump","r":"Uncommon"},{"n":"Bowser's Bigger Blast","r":"Rare"},{"n":"Link","r":"Rare"},{"n":"Gyroid","r":"Rare"},{"n":"Armored Harriers","r":"Rare"},{"n":"Francis","r":"Rare"},{"n":"Mimi","r":"Rare"},{"n":"Koopatrol","r":"Rare"},{"n":"Chance Time","r":"Rare"},{"n":"Goomba's Greedy Gala","r":"Rare"},{"n":"Wart","r":"Rare"},{"n":"Goomboss","r":"Rare"},{"n":"Domination","r":"Rare"},{"n":"Gooper Blooper","r":"Rare"},{"n":"Poochy","r":"Rare"},{"n":"Bouldergeist","r":"Rare"},{"n":"Plungelo","r":"Rare"},{"n":"Electro-Koopa","r":"Rare"},{"n":"Hole in One","r":"Rare"},{"n":"Perfect","r":"Rare"},{"n":"Falco Laser","r":"Rare"},{"n":"T-Bone","r":"Rare"},{"n":"Top Speed","r":"Rare"},{"n":"Lucario","r":"Rare"},{"n":"Olimar","r":"Rare"},{"n":"Louie","r":"Rare"},{"n":"Shulk","r":"Rare"},{"n":"Melia","r":"Rare"},{"n":"General Guy","r":"Rare"},{"n":"Flutter","r":"Rare"},{"n":"Snow Miser","r":"Rare"},{"n":"Professor Frankly","r":"Ultra Rare"},{"n":"Goombella","r":"Ultra Rare"},{"n":"Cortez","r":"Ultra Rare"},{"n":"Mr. L","r":"Ultra Rare"},{"n":"The Green That Lies","r":"Ultra Rare"},{"n":"Lamp Genie","r":"Ultra Rare"},{"n":"Duel Machine","r":"Ultra Rare"},{"n":"Il Piantissimo","r":"Ultra Rare"},{"n":"500 Points Pole","r":"Ultra Rare"},{"n":"Zelda","r":"Ultra Rare"},{"n":"Esquie","r":"Ultra Rare"},{"n":"Mario Head","r":"Ultra Rare"},{"n":"Celeste","r":"Ultra Rare"},{"n":"Pingu","r":"Ultra Rare"},{"n":"Samus","r":"Ultra Rare"},{"n":"The Undertaker","r":"Ultra Rare"},{"n":"Sgt Pepper","r":"Ultra Rare"},{"n":"Siba","r":"Ultra Rare"},{"n":"Dax","r":"Ultra Rare"},{"n":"Charlie","r":"Ultra Rare"},{"n":"Gulliver","r":"Ultra Rare"},{"n":"Monty","r":"Ultra Rare"},{"n":"Mino and Hammi","r":"Ultra Rare"},{"n":"Sauda","r":"Ultra Rare"},{"n":"Melvin Doo","r":"Ultra Rare"},{"n":"Tippi","r":"Legendary"},{"n":"Count Bleck","r":"Legendary"},{"n":"L is Real","r":"Legendary"},{"n":"Google Sheet","r":"Legendary"},{"n":"All Patch","r":"Legendary"},{"n":"Tetra","r":"Legendary"},{"n":"Bill","r":"Legendary"},{"n":"Crazy Hand","r":"Legendary"},{"n":"Scatman John","r":"Legendary"},{"n":"Goombot Credit Card","r":"Legendary"},{"n":"Dexter","r":"Legendary"},{"n":"Dark Cannon","r":"Legendary"},{"n":"Pat's Pond","r":"Legendary"},{"n":"Bomberman","r":"Legendary"},{"n":"Mario Party 4567","r":"Legendary"},{"n":"Octagon","r":"Legendary"},{"n":"Hampsterdance","r":"Legendary"},{"n":"Mr. Resetti","r":"Common"},{"n":"Bobble","r":"Common"},{"n":"SpongeBob","r":"Common"},{"n":"Octoman","r":"Common"},{"n":"Bogey","r":"Common"},{"n":"Doubles","r":"Common"},{"n":"Scorecard","r":"Common"},{"n":"Strawberry Cow","r":"Common"},{"n":"Tier List","r":"Common"},{"n":"Baby Luigi","r":"Common"},{"n":"Baby Mario","r":"Common"},{"n":"Beanie","r":"Common"},{"n":"Bill Board","r":"Common"},{"n":"Gearmo","r":"Common"},{"n":"Mettaur","r":"Common"},{"n":"CW Smith","r":"Common"},{"n":"Frolf","r":"Common"},{"n":"Gandalf","r":"Common"},{"n":"Good Answer","r":"Common"},{"n":"Metroid","r":"Common"},{"n":"Interactive Buddy","r":"Common"},{"n":"Wingull","r":"Common"},{"n":"Strike","r":"Common"},{"n":"Primid","r":"Common"},{"n":"Smash Ball","r":"Common"},{"n":"Bonus Chance","r":"Common"},{"n":"Guide","r":"Common"},{"n":"Flippy","r":"Common"},{"n":"Doogan","r":"Common"},{"n":"Punio","r":"Common"},{"n":"Fronk","r":"Common"},{"n":"Reyn","r":"Common"},{"n":"Raphael","r":"Common"},{"n":"Spoils Bag","r":"Common"},{"n":"Yarn Poochy","r":"Common"},{"n":"Ankha","r":"Legendary"},{"n":"Liberty 1909","r":"Legendary"},{"n":"Spy's Texture Pack","r":"Legendary"},{"n":"Randall","r":"Legendary"},{"n":"Bowser Suit","r":"Legendary"},{"n":"Wiggler's Milk Saloon","r":"Legendary"},{"n":"Bowsette","r":"Legendary"},{"n":"Despite all my rage","r":"Legendary"},{"n":"Elaenor","r":"Legendary"},{"n":"Prisoner","r":"Legendary"},{"n":"Line Rider","r":"Legendary"},{"n":"Party Phil","r":"Legendary"},{"n":"Shadow Peach","r":"Legendary"},{"n":"Isabelle","r":"Rare"},{"n":"Skye","r":"Rare"},{"n":"Crash Bandicoot","r":"Rare"},{"n":"Tiny Kong","r":"Rare"},{"n":"Frogger","r":"Rare"},{"n":"Judy Hopps","r":"Rare"},{"n":"Nick Wilde","r":"Rare"},{"n":"Skorne","r":"Rare"},{"n":"Boo Ball","r":"Rare"},{"n":"Booster","r":"Rare"},{"n":"Captain Toad","r":"Rare"},{"n":"Croco","r":"Rare"},{"n":"Guppy","r":"Rare"},{"n":"Maw-Ray","r":"Rare"},{"n":"Popple","r":"Rare"},{"n":"Koopa Kid","r":"Rare"},{"n":"Bad Apple","r":"Rare"},{"n":"Scribblenauts","r":"Rare"},{"n":"Pac-Man","r":"Rare"},{"n":"Garchomp","r":"Rare"},{"n":"N","r":"Rare"},{"n":"Mega Man","r":"Rare"},{"n":"Sonic","r":"Rare"},{"n":"Spyro","r":"Rare"},{"n":"Sheena","r":"Rare"},{"n":"Hooktail","r":"Rare"},{"n":"Koops","r":"Rare"},{"n":"Whacka","r":"Rare"},{"n":"Riki","r":"Rare"},{"n":"Yarn Yoshi","r":"Rare"},{"n":"Rover","r":"Ultra Rare"},{"n":"Quincy","r":"Ultra Rare"},{"n":"Chunky Kong","r":"Ultra Rare"},{"n":"Ness","r":"Ultra Rare"},{"n":"Ace Petey","r":"Ultra Rare"},{"n":"Professor Layton","r":"Ultra Rare"},{"n":"Atomic Boo","r":"Ultra Rare"},{"n":"Exor","r":"Ultra Rare"},{"n":"Giant Wiggler","r":"Ultra Rare"},{"n":"Brighton","r":"Ultra Rare"},{"n":"Twila","r":"Ultra Rare"},{"n":"AVGN","r":"Ultra Rare"},{"n":"Wally Nickels","r":"Ultra Rare"},{"n":"The Great Mighty Poo","r":"Ultra Rare"},{"n":"Joker","r":"Ultra Rare"},{"n":"Meeka","r":"Ultra Rare"},{"n":"Teddy and Goose","r":"Ultra Rare"},{"n":"Cynthia","r":"Ultra Rare"},{"n":"Krystal","r":"Ultra Rare"},{"n":"Wall of Flesh","r":"Ultra Rare"},{"n":"Cursed","r":"Ultra Rare"},{"n":"Don Pianta","r":"Ultra Rare"},{"n":"Doopliss","r":"Ultra Rare"},{"n":"Ms. Mowz","r":"Ultra Rare"},{"n":"Clown Car","r":"Uncommon"},{"n":"Morton","r":"Uncommon"},{"n":"Boomerang Monkey","r":"Uncommon"},{"n":"DK Bongos","r":"Uncommon"},{"n":"Funky Kong","r":"Uncommon"},{"n":"6 Iron","r":"Uncommon"},{"n":"Bunker Putt","r":"Uncommon"},{"n":"Starman","r":"Uncommon"},{"n":"Waddle Doo","r":"Uncommon"},{"n":"Sackboy","r":"Uncommon"},{"n":"Glydon","r":"Uncommon"},{"n":"Mandibug Stack","r":"Uncommon"},{"n":"Manta Ramp","r":"Uncommon"},{"n":"Octoomba","r":"Uncommon"},{"n":"Rex","r":"Uncommon"},{"n":"Squiggler","r":"Uncommon"},{"n":"Whittle","r":"Uncommon"},{"n":"Alien","r":"Uncommon"},{"n":"Chomp Call","r":"Uncommon"},{"n":"Chrome Dino","r":"Uncommon"},{"n":"Matt","r":"Uncommon"},{"n":"Meet n Huh","r":"Uncommon"},{"n":"Wii Fit Trainer","r":"Uncommon"},{"n":"Battletoads","r":"Uncommon"},{"n":"Club Penguin","r":"Uncommon"},{"n":"Monita","r":"Uncommon"},{"n":"QWOP","r":"Uncommon"},{"n":"Purple Pikmin","r":"Uncommon"},{"n":"White Pikmin","r":"Uncommon"},{"n":"Mudkip","r":"Uncommon"},{"n":"Pooka","r":"Uncommon"},{"n":"Tails","r":"Uncommon"},{"n":"Marie","r":"Uncommon"},{"n":"Line Piece","r":"Uncommon"},{"n":"Lloyd","r":"Uncommon"},{"n":"Ghost T","r":"Uncommon"},{"n":"Grubba","r":"Uncommon"},{"n":"Jabble","r":"Uncommon"},{"n":"Dunban","r":"Uncommon"},{"n":"Sharla","r":"Uncommon"},{"n":"Morshu","r":"Uncommon"}]
+;
+
+  const RARITY_ORDER = ["Common", "Uncommon", "Rare", "Ultra Rare", "Legendary"];
+  const RARITY_CLASS = {
+    "Common": "common", "Uncommon": "uncommon", "Rare": "rare",
+    "Ultra Rare": "ultra", "Legendary": "legend"
+  };
+  const RARITY_VAR = {
+    "Common": "--c-common", "Uncommon": "--c-uncommon", "Rare": "--c-rare",
+    "Ultra Rare": "--c-ultra", "Legendary": "--c-legend"
+  };
+
+  // ---------------------------------------------------------------------
+  // Encode/decode — must stay byte-identical to the bot's index.js copy
+  // (computeFavoriteChecksum / encodeFavoritesCode / decodeFavoritesCode).
+  // ---------------------------------------------------------------------
+  function computeChecksum(list){
+    let hash = 0;
+    const str = list.map(c => c.n).join("|");
+    for (let i = 0; i < str.length; i++){
+      hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+    }
+    return list.length.toString(36) + "-" + hash.toString(36);
+  }
+
+  function bytesToBase64Url(bytes){
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  function base64UrlToBytes(b64url){
+    let b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
+    while (b64.length % 4) b64 += "=";
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  function encodeFavoritesCode(favoritedSet){
+    const bytes = new Uint8Array(Math.ceil(CARD_DATA.length / 8));
+    CARD_DATA.forEach((c, i) => {
+      if (favoritedSet.has(c.n)) bytes[i >> 3] |= (1 << (i % 8));
+    });
+    const checksum = computeChecksum(CARD_DATA);
+    return checksum + "." + bytesToBase64Url(bytes);
+  }
+
+  function decodeFavoritesCode(code){
+    if (typeof code !== "string" || !code.includes(".")) return { error: "malformed" };
+    const dot = code.indexOf(".");
+    const checksum = code.slice(0, dot).trim();
+    const b64 = code.slice(dot + 1).trim();
+    const expected = computeChecksum(CARD_DATA);
+    if (checksum !== expected) return { error: "outdated" };
+    let bytes;
+    try { bytes = base64UrlToBytes(b64); } catch(e) { return { error: "malformed" }; }
+    const names = [];
+    CARD_DATA.forEach((c, i) => {
+      const byte = bytes[i >> 3] || 0;
+      if (byte & (1 << (i % 8))) names.push(c.n);
+    });
+    return { names };
+  }
+
+  // ---------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------
+  const favorited = new Set();
+  const byRarity = {};
+  RARITY_ORDER.forEach(r => byRarity[r] = []);
+  CARD_DATA.forEach(c => { (byRarity[c.r] = byRarity[c.r] || []).push(c); });
+  RARITY_ORDER.forEach(r => byRarity[r].sort((a, b) => a.n.localeCompare(b.n)));
+
+  const rowEls = new Map();   // name -> row element
+  const checkboxEls = new Map(); // name -> checkbox element
+  const railFillEls = {};    // rarity -> fill element
+  const railCountEls = {};   // rarity -> count text element
+  const sectionEls = {};     // rarity -> section element
+  const sectionCountEls = {}; // rarity -> header count element
+
+  // ---------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------
+  const railnav = document.getElementById("railnav");
+  const content = document.getElementById("content");
+
+  RARITY_ORDER.forEach(rarity => {
+    const cards = byRarity[rarity] || [];
+    if (cards.length === 0) return;
+    const cls = RARITY_CLASS[rarity];
+    const colorVar = `var(${RARITY_VAR[rarity]})`;
+
+    // Rail tab
+    const tab = document.createElement("button");
+    tab.className = "rail-tab";
+    tab.type = "button";
+    tab.innerHTML = `
+      <div class="rail-top">
+        <span>${rarity}</span>
+        <span class="rail-count" data-role="count">0/${cards.length}</span>
+      </div>
+      <div class="rail-fill-track"><div class="rail-fill" data-role="fill" style="width:0%;background:${colorVar}"></div></div>
+    `;
+    tab.addEventListener("click", () => {
+      document.getElementById("section-" + cls).scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    railnav.appendChild(tab);
+    railFillEls[rarity] = tab.querySelector('[data-role="fill"]');
+    railCountEls[rarity] = tab.querySelector('[data-role="count"]');
+
+    // Section
+    const section = document.createElement("section");
+    section.className = "section";
+    section.id = "section-" + cls;
+    section.style.setProperty("--rarity-color", colorVar);
+
+    section.innerHTML = `
+      <div class="section-head">
+        <h2>${rarity}</h2>
+        <span class="section-count" data-role="scount">0/${cards.length}</span>
+        <div class="section-tools">
+          <button class="btn-mini" data-role="selall">select all</button>
+          <button class="btn-mini" data-role="clearall">clear</button>
+        </div>
+      </div>
+      <div class="card-grid" data-role="grid"></div>
+    `;
+    sectionEls[rarity] = section;
+    sectionCountEls[rarity] = section.querySelector('[data-role="scount"]');
+
+    const grid = section.querySelector('[data-role="grid"]');
+    cards.forEach(c => {
+      const row = document.createElement("label");
+      row.className = "card-row";
+      row.dataset.name = c.n.toLowerCase();
+      row.innerHTML = `<input type="checkbox"><span></span>`;
+      row.querySelector("span").textContent = c.n;
+      const checkbox = row.querySelector("input");
+
+      row.addEventListener("click", (e) => {
+        e.preventDefault();
+        setFavorited(c.n, !favorited.has(c.n));
+      });
+
+      grid.appendChild(row);
+      rowEls.set(c.n, row);
+      checkboxEls.set(c.n, checkbox);
+    });
+
+    section.querySelector('[data-role="selall"]').addEventListener("click", () => {
+      cards.forEach(c => { if (!rowEls.get(c.n).classList.contains("hidden")) setFavorited(c.n, true, true); });
+      refreshCounts();
+    });
+    section.querySelector('[data-role="clearall"]').addEventListener("click", () => {
+      cards.forEach(c => { if (!rowEls.get(c.n).classList.contains("hidden")) setFavorited(c.n, false, true); });
+      refreshCounts();
+    });
+
+    content.appendChild(section);
+  });
+
+  document.getElementById("totalCount").textContent = CARD_DATA.length;
+
+  function setFavorited(name, isFav, skipRefresh){
+    if (isFav) favorited.add(name); else favorited.delete(name);
+    const row = rowEls.get(name);
+    const checkbox = checkboxEls.get(name);
+    if (row && checkbox){
+      checkbox.checked = isFav;
+      row.classList.toggle("checked", isFav);
+    }
+    if (!skipRefresh) refreshCounts();
+  }
+
+  function refreshCounts(){
+    document.getElementById("favCount").textContent = favorited.size;
+    RARITY_ORDER.forEach(rarity => {
+      const cards = byRarity[rarity] || [];
+      if (cards.length === 0) return;
+      const count = cards.filter(c => favorited.has(c.n)).length;
+      const pct = cards.length ? Math.round((count / cards.length) * 100) : 0;
+      railCountEls[rarity].textContent = `${count}/${cards.length}`;
+      railFillEls[rarity].style.width = pct + "%";
+      sectionCountEls[rarity].textContent = `${count}/${cards.length}`;
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Search
+  // ---------------------------------------------------------------------
+  document.getElementById("searchInput").addEventListener("input", (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    RARITY_ORDER.forEach(rarity => {
+      const cards = byRarity[rarity] || [];
+      if (cards.length === 0) return;
+      let visibleCount = 0;
+      cards.forEach(c => {
+        const row = rowEls.get(c.n);
+        const match = !q || row.dataset.name.includes(q);
+        row.classList.toggle("hidden", !match);
+        if (match) visibleCount++;
+      });
+      sectionEls[rarity].classList.toggle("hidden", visibleCount === 0);
+    });
+  });
+
+  // ---------------------------------------------------------------------
+  // Export
+  // ---------------------------------------------------------------------
+  const toastEl = document.getElementById("toast");
+  let toastTimer = null;
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2200);
+  }
+
+  document.getElementById("exportBtn").addEventListener("click", async () => {
+    const code = encodeFavoritesCode(favorited);
+    try {
+      await navigator.clipboard.writeText(code);
+      showToast("Copied! Paste it into /favorite import in Discord.");
+    } catch(e) {
+      window.prompt("Copy this code:", code);
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // Load code (manual)
+  // ---------------------------------------------------------------------
+  const loadPanel = document.getElementById("loadPanel");
+  const loadInput = document.getElementById("loadInput");
+  const loadStatus = document.getElementById("loadStatus");
+
+  document.getElementById("loadToggleBtn").addEventListener("click", () => {
+    loadPanel.hidden = !loadPanel.hidden;
+    if (!loadPanel.hidden) loadInput.focus();
+  });
+
+  document.getElementById("loadApplyBtn").addEventListener("click", () => {
+    applyCode(loadInput.value.trim(), loadStatus);
+  });
+
+  function applyCode(code, statusEl){
+    if (!code){
+      statusEl.textContent = "Paste a code first.";
+      statusEl.className = "load-status err";
+      return;
+    }
+    const result = decodeFavoritesCode(code);
+    if (result.error === "outdated"){
+      statusEl.textContent = "This code doesn't match this page's card list. Ask the bot owner to update the site, or re-export a fresh code.";
+      statusEl.className = "load-status err";
+      return;
+    }
+    if (result.error){
+      statusEl.textContent = "That code doesn't look valid.";
+      statusEl.className = "load-status err";
+      return;
+    }
+    favorited.clear();
+    rowEls.forEach((row, name) => setFavorited(name, false, true));
+    result.names.forEach(n => setFavorited(n, true, true));
+    refreshCounts();
+    statusEl.textContent = `Loaded ${result.names.length} favorite${result.names.length === 1 ? "" : "s"}.`;
+    statusEl.className = "load-status ok";
+  }
+
+  // ---------------------------------------------------------------------
+  // Initial load from URL hash
+  // ---------------------------------------------------------------------
+  const banner = document.getElementById("banner");
+  const hash = decodeURIComponent(location.hash.replace(/^#/, ""));
+  if (hash){
+    const result = decodeFavoritesCode(hash);
+    if (result.error === "outdated"){
+      banner.hidden = false;
+      banner.innerHTML = "This link's card list doesn't match this page's — favorites weren't preloaded. You can still edit and export from scratch. <button id=\"dismissBanner\">Dismiss</button>";
+      document.getElementById("dismissBanner").addEventListener("click", () => banner.hidden = true);
+    } else if (result.error){
+      banner.hidden = false;
+      banner.innerHTML = "This link's code looked invalid, so nothing was preloaded. <button id=\"dismissBanner\">Dismiss</button>";
+      document.getElementById("dismissBanner").addEventListener("click", () => banner.hidden = true);
+    } else {
+      result.names.forEach(n => setFavorited(n, true, true));
+    }
+  }
+
+  refreshCounts();
+})();
+</script>
+</body>
+</html>
